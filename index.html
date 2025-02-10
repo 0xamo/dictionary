@@ -1,0 +1,363 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dictionary</title>
+    <style>
+        /* Dark Theme Styling */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+IPA&display=swap');
+
+        body {
+            font-family: monospace;
+            font-size: larger;
+            background-color: #0d0f1a;
+            color: #fff;
+            padding: 15px;
+            margin: auto;
+        }
+
+        p#transcription {
+            font-family: 'Noto Sans IPA', sans-serif;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            box-sizing: border-box;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #b38eff;
+            text-align: center;
+            margin: 0 0 15px 0;
+        }
+
+        h2 {
+            color: oklch(72.26% .1709 308.61);
+        }
+
+        .search-box {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        @media (min-width: 480px) {
+            .search-box {
+                flex-direction: row;
+                align-items: center;
+            }
+        }
+
+        input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: white;
+            font-size: 16px;
+            padding: 12px;
+            min-width: 0; /* Fix flex overflow */
+        }
+
+        button {
+            background: #b38eff;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        div#wordInfo {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        button:hover {
+            background: #9b6eff;
+            box-shadow: 0 0 10px rgba(179, 142, 255, 0.5);
+        }
+
+        .definition-box {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        a.searchable-word {
+            color: #fff;
+            text-decoration: auto;
+        }
+
+        .definition-box p {
+            margin: 0;
+            word-spacing: 10px;
+            flex: 1 1 250px;
+            min-width: 60%;
+            word-break: break-word;
+            word-spacing: -3px;
+            /* text-align: justify; */
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .audio-btn, .copy-btn {
+            padding: 8px;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: grid;
+            place-items: center;
+        }
+
+        svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                margin: 10px auto;
+                padding: 12px;
+            }
+
+            button#searchBtn {
+                width: 100%;
+                padding: 12px;
+            }
+
+            input {
+                font-size: 14px;
+            }
+
+            .definition-box p {
+                flex-basis: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search-box">
+            <input type="text" id="wordInput" placeholder="Enter a word...">
+            <button id="searchBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <span class="search-text">Search</span>
+            </button>
+        </div>
+        <!-- New Section for Word Info -->
+        <div id="wordInfo" style="display: none;">
+            <h2 id="wordDisplay"></h2>
+            <p id="transcription"></p>
+            <button id="audioBtn" class="audio-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 6v12M9 9.6v4.8M15 9.6v4.8M6 8.4v7.2M18 8.4v7.2"></path>
+                </svg>
+            </button>
+        </div>
+        <div id="definitions"></div>
+    </div>
+
+    <script>
+        async function searchWord() {
+            const word = document.getElementById('wordInput').value.trim();
+            const definitionsDiv = document.getElementById('definitions');
+            const wordInfoDiv = document.getElementById('wordInfo');
+            const wordDisplay = document.getElementById('wordDisplay');
+            const transcription = document.getElementById('transcription');
+            const audioBtn = document.getElementById('audioBtn');
+
+            definitionsDiv.innerHTML = '';
+            wordInfoDiv.style.display = 'none'; // Hide word info initially
+
+            if (word === '') {
+                definitionsDiv.innerHTML = "<p style='color: red;'>Please enter a word.</p>";
+                return;
+            }
+
+            try {
+                // Fetch data from the second API for transcription
+                const response2 = await fetch(`https://dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=2974149b-cb98-4ce7-8411-245f21ee57ce`);
+                const data2 = await response2.json();
+
+                if (Array.isArray(data2) && data2.length > 0 && data2[0].meta) {
+                    // Display word info
+                    wordDisplay.textContent = word;
+                    const pronunciation = data2[0].hwi.prs?.[0]?.mw || '';
+                    transcription.textContent = `${pronunciation}`;
+
+                    // Fetch data from the first API for audio and definitions
+                    const response1 = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+                    const data1 = await response1.json();
+
+                    if (data1 && data1[0]) {
+                        // Use audio from the first API if available
+                        const audio = data1[0].phonetics.find(p => p.audio)?.audio;
+                        if (audio) {
+                            audioBtn.onclick = () => new Audio(audio).play();
+                            audioBtn.style.display = 'inline-block';
+                        } else {
+                            // Fallback to audio from the second API if first API doesn't have it
+                            const audio2 = data2[0].hwi.prs?.[0]?.sound?.audio;
+                            if (audio2) {
+                                const audioUrl = `https://media.merriam-webster.com/audio/prons/en/us/mp3/${audio2.charAt(0)}/${audio2}.mp3`;
+                                audioBtn.onclick = () => new Audio(audioUrl).play();
+                                audioBtn.style.display = 'inline-block';
+                            } else {
+                                audioBtn.style.display = 'none';
+                            }
+                        }
+
+                        wordInfoDiv.style.display = 'flex'; // Show word info
+
+                        // Display definitions from the first API
+                        data1[0].meanings[0].definitions.forEach((def, index) => {
+                            let defBox = document.createElement('div');
+                            defBox.classList.add('definition-box');
+
+                            const buttonGroup = document.createElement('div');
+                            buttonGroup.classList.add('button-group');
+
+                            const copyBtn = document.createElement('button');
+                            copyBtn.classList.add('copy-btn');
+                            copyBtn.innerHTML = `
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="8" y="8" width="14" height="14" rx="2"/>
+                                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                                </svg>
+                            `;
+                            copyBtn.onclick = () => copyToClipboard(def.definition);
+                            buttonGroup.appendChild(copyBtn);
+
+                            // Wrap words in definitions with clickable links, treating punctuation as separate elements
+                            const definitionText = def.definition.split(/(\b|\s)/).map(word => {
+                                return /\w+/.test(word) 
+                                    ? `<a href="#" class="searchable-word" data-word="${word}">${word}</a>` 
+                                    : word;
+                            }).join('');
+
+                            defBox.innerHTML = `<p>${definitionText}</p>`;
+                            defBox.appendChild(buttonGroup);
+                            definitionsDiv.appendChild(defBox);
+                        });
+
+                        // Add event listeners to searchable words
+                        document.querySelectorAll('.searchable-word').forEach(link => {
+                            link.addEventListener('click', function(event) {
+                                event.preventDefault();
+                                const word = this.getAttribute('data-word');
+                                document.getElementById('wordInput').value = word;
+                                searchWord();
+                            });
+                        });
+
+                        // Clear the search bar after getting results
+                        document.getElementById('wordInput').value = "";
+
+                    } else {
+                        // If the first API doesn't have definitions, use the second API
+                        data2.forEach((entry, index) => {
+                            entry.shortdef.forEach((def, defIndex) => {
+                                let defBox = document.createElement('div');
+                                defBox.classList.add('definition-box');
+
+                                const buttonGroup = document.createElement('div');
+                                buttonGroup.classList.add('button-group');
+
+                                const copyBtn = document.createElement('button');
+                                copyBtn.classList.add('copy-btn');
+                                copyBtn.innerHTML = `
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="8" y="8" width="14" height="14" rx="2"/>
+                                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                                    </svg>
+                                `;
+                                copyBtn.onclick = () => copyToClipboard(def);
+                                buttonGroup.appendChild(copyBtn);
+
+                                defBox.innerHTML = `<p><strong></strong> ${def}</p>`;
+                                defBox.appendChild(buttonGroup);
+                                definitionsDiv.appendChild(defBox);
+                            });
+                        });
+
+                        // Clear the search bar after getting results
+                        document.getElementById('wordInput').value = "";
+                    }
+                } else {
+                    definitionsDiv.innerHTML = "<p style='color: red;'>Word not found!</p>";
+                }
+            } catch (error) {
+                definitionsDiv.innerHTML = "<p style='color: red;'>Error fetching definition.</p>";
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+        }
+
+        document.getElementById('searchBtn').addEventListener('click', searchWord);
+        document.getElementById('wordInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                searchWord();
+            }
+        });
+
+        // Listen for paste event on the input field
+        document.getElementById('wordInput').addEventListener('paste', function(event) {
+            // Trigger search after a short delay to allow the pasted text to be populated
+            setTimeout(searchWord, 0);
+        });
+
+        // Listen for drop event on the input field
+        document.getElementById('wordInput').addEventListener('drop', function(event) {
+            event.preventDefault(); // Prevent the default behavior (e.g., opening the dropped file)
+            const droppedText = event.dataTransfer.getData('text'); // Get the dropped text
+            document.getElementById('wordInput').value = droppedText; // Set the input value to the dropped text
+            searchWord(); // Trigger the search
+        });
+
+        // Prevent default drag-over behavior
+        document.getElementById('wordInput').addEventListener('dragover', function(event) {
+            event.preventDefault();
+        });
+    </script>
+</body>
+</html>
